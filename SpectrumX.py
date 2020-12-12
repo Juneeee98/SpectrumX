@@ -2,7 +2,10 @@ import selenium
 import time
 import io
 import requests
+import firebase_admin
 
+from firebase_admin import credentials
+from firebase_admin import firestore
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -11,6 +14,9 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
+
+
+
 
 import schedule
 import time
@@ -31,6 +37,11 @@ options.headless = False
 
 driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"), chrome_options=options)
 #driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"))
+
+cred = credentials.Certificate(os.getenv("serviceAccountKey"))
+firebase_admin.initialize_app(cred)
+firestore_db = firestore.client()
+
 
 
 def login(driver):
@@ -68,14 +79,17 @@ def getFile(driver):
       driver.find_elements_by_class_name("coursename")[x].click()
       for element in driver.find_elements_by_xpath('//div[1]/nav/ol/li[3]/a'):
          z = element.get_attribute("title")
+         courseCode = z.split(' ',1)
+         data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
+         firestore_db.collection(u'Course').document(courseCode[0]).set(data)
       for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):
-         courseCode = z
+         
 
 
          #print("course code= ", courseCode)
          # print(y[1])
          if 'resource' in element.get_attribute("href"):
-            print(courseCode+ " " + element.get_attribute("text"))
+            print(courseCode[1]+ " " + element.get_attribute("text"))
             #dataCheck = compare(courseCode[1],element.get_attribute("text"))
             dataCheck = False
             # print("resource")
@@ -83,7 +97,7 @@ def getFile(driver):
                count+=1
 
          elif 'assign' in element.get_attribute("href"):
-            print(courseCode + " " + element.get_attribute("text"))
+            print(courseCode[1] + " " + element.get_attribute("text"))
             dataCheck = False
             #dataCheck = compare(courseCode[1],element.get_attribute("text"))
             if dataCheck == False:
@@ -92,7 +106,7 @@ def getFile(driver):
                
       driver.back()
 
-def test1(driver):
+def test(driver):
    count = 0
    for x in range(len(driver.find_elements_by_class_name("coursename"))):
       driver.find_elements_by_class_name("coursename")[x].click()
@@ -105,5 +119,3 @@ def test1(driver):
 if __name__ == "__main__":
     login(driver)
     getFile(driver)
-
-# hello

@@ -1,0 +1,2 @@
+# SpectrumX
+Spectrum Web Scraper

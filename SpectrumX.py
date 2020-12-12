@@ -22,7 +22,7 @@ import schedule
 import time
 
 # import from other py file
-import functions as funct
+#import functions as funct
 
 # dot env file
 import os
@@ -41,6 +41,7 @@ driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"), chrome_options=options)
 cred = credentials.Certificate(os.getenv("serviceAccountKey"))
 firebase_admin.initialize_app(cred)
 firestore_db = firestore.client()
+toBePushData = []
 
 
 
@@ -74,45 +75,33 @@ def login(driver):
 
 
 def getFile(driver):
-   count = 0
-   for x in range(len(driver.find_elements_by_class_name("coursename"))):
-      driver.find_elements_by_class_name("coursename")[x].click()
-      for element in driver.find_elements_by_xpath('//div[1]/nav/ol/li[3]/a'):
+  
+   for x in range(len(driver.find_elements_by_class_name("coursename"))): #get the length of Courses Taken by users
+
+      driver.find_elements_by_class_name("coursename")[x].click()         #clicking each course link
+
+      for element in driver.find_elements_by_xpath('//div[1]/nav/ol/li[3]/a'):  #getting the title of courses clicked and create them in database
          z = element.get_attribute("title")
          courseCode = z.split(' ',1)
          data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
          firestore_db.collection(u'Course').document(courseCode[0]).set(data)
-      for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):
+
+      for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):   #getting the subtopic for each courses ie. Week 1 : MATLAB 01 Intro
          
+        
+         if 'resource' in element.get_attribute("href"):                        #check if the clickable link is directed to a file type 
+        
+            tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "resource" }
+            toBePushData.append(tempdata)
+    
 
-
-         #print("course code= ", courseCode)
-         # print(y[1])
-         if 'resource' in element.get_attribute("href"):
-            print(courseCode[1]+ " " + element.get_attribute("text"))
-            #dataCheck = compare(courseCode[1],element.get_attribute("text"))
-            dataCheck = False
-            # print("resource")
-            if dataCheck == False:
-               count+=1
-
-         elif 'assign' in element.get_attribute("href"):
-            print(courseCode[1] + " " + element.get_attribute("text"))
-            dataCheck = False
-            #dataCheck = compare(courseCode[1],element.get_attribute("text"))
-            if dataCheck == False:
-               count+=1
-               # print("assignment")
-               
-      driver.back()
-
-def test(driver):
-   count = 0
-   for x in range(len(driver.find_elements_by_class_name("coursename"))):
-      driver.find_elements_by_class_name("coursename")[x].click()
-      for element in driver.find_elements_by_xpath('//div[1]/nav/ol/li[3]/a'):
-         print("y=", element.get_attribute("title"))
-               
+         elif 'assign' in element.get_attribute("href"):                        #check if the clickable link is directed to a assignment submission type
+            
+            tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" }
+            toBePushData.append(tempdata)
+           
+           
+      firestore_db.collection(u'Course').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
       driver.back()
 
 

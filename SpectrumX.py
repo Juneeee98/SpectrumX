@@ -92,7 +92,7 @@ def getFile(driver):
                
       driver.back()
 
-def test(driver):
+def test1(driver):
    count = 0
    for x in range(len(driver.find_elements_by_class_name("coursename"))):
       driver.find_elements_by_class_name("coursename")[x].click()

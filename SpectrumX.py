@@ -4,6 +4,7 @@ import io
 import requests
 import firebase_admin
 import multiprocessing as mp
+import pickle
 
 from firebase_admin import credentials
 from firebase_admin import firestore
@@ -78,7 +79,7 @@ def login(driver, Username, Pass):
 # --------------------------------------------------------------------------------------------
 # Obtaining files from SPeCTRUM
 # --------------------------------------------------------------------------------------------
-def getFile(driver):
+def getFile(driver, Username):
     toBePushData = []
     # Get the number of courses taken by the user
     for x in range(len(driver.find_elements_by_class_name("coursename"))): #get the length of Courses Taken by users
@@ -89,7 +90,7 @@ def getFile(driver):
          z = element.get_attribute("title")
          courseCode = z.split(' ',1)
          data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
-         #firestore_db.collection(u'Course').document(courseCode[0]).set(data)
+         #firestore_db.collection(u'Users').document(Username).collection('Subjects').document(courseCode[0]).set(data)
 
       # Getting the subtopic for each courses (e.g. Week 1 : MATLAB 01 Intro)
       for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):   #getting the subtopic for each courses ie. Week 1 : MATLAB 01 Intro
@@ -125,7 +126,59 @@ def getFile(driver):
             driver.switch_to.window(driver.window_handles[0])
             
       # Pushing all subtopic updates to database
-      firestore_db.collection(u'Course').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
+      firestore_db.collection(u'Users').document(Username).collection('Subjects').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
+ 
+      driver.back()
+    driver.quit()
+
+def firstRun(driver, Username):
+    toBePushData = []
+    # Get the number of courses taken by the user
+    for x in range(len(driver.find_elements_by_class_name("coursename"))): #get the length of Courses Taken by users
+    # Click into each course link
+      driver.find_elements_by_class_name("coursename")[x].click()         #clicking each course link
+    # Getting the course titles and store into the database
+      for element in driver.find_elements_by_xpath('//div[1]/nav/ol/li[3]/a'):  #getting the title of courses clicked and create them in database
+         z = element.get_attribute("title")
+         courseCode = z.split(' ',1)
+         data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
+         firestore_db.collection(u'Users').document(Username).collection('Subjects').document(courseCode[0]).set(data)
+
+      # Getting the subtopic for each courses (e.g. Week 1 : MATLAB 01 Intro)
+      for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):   #getting the subtopic for each courses ie. Week 1 : MATLAB 01 Intro
+         
+        # Check if the clickable link is directed to type: Files or resources
+         if 'resource' in element.get_attribute("href"):   
+            tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "resource" }
+            toBePushData.append(tempdata)                     #check if the clickable link is directed to a file type 
+            
+    
+        # Check if the clickable link is directed to submission type: Assignment
+         elif 'assign' in element.get_attribute("href"):                        #check if the clickable link is directed to a assignment submission type
+            
+            tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" } #create teamp variable to hold name and type of subtopic
+            ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform() #open a new tab 
+            driver.switch_to.window(driver.window_handles[-1])                                        #change focus 
+
+            td= []                                                                              
+            x=0
+
+            # Find the left column of submission page
+            for element1 in driver.find_elements_by_xpath('//td[1]'):                                   #find left column of submission page
+                if("Submission status" in element1.text or "Due date" in element1.text ):
+
+                    dic = {element1.text : driver.find_elements_by_xpath('//td[2]')[x].text}            #find right column and add to dictionary to be pushed to database
+                    td.append(dic)                                                                      
+                    tempdata.update(dic)
+                
+
+                x=x+1
+            toBePushData.append(tempdata)                                                           #update the toBePushed data + submission info
+            driver.close()                                                                          #close current tab and switch back focus to main page
+            driver.switch_to.window(driver.window_handles[0])
+            
+      # Pushing all subtopic updates to database
+      firestore_db.collection(u'Users').document(Username).collection('Subjects').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
  
       driver.back()
     driver.quit()
@@ -140,33 +193,57 @@ def browser():
     #driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"))
     return driver
 
+def returnNotMatches(a, b):
+    return [[x for x in a if x not in b], [x for x in b if x not in a]]
+
 def subprocess():
- 
+    try:
+        pickle_in = open("Users.pickle", "rb")
+        Record = pickle.load(pickle_in)
+        print(Record)
+
+    except:
+        pass 
+
+
     while True: 
-        print("listening to new user")
-        
-        # options = webdriver.ChromeOptions()
-        # options.add_argument('--ignore-certificate-errors')
-        # options.add_argument("--test-type")
-        # options = Options()
-        # options.headless = False
-        # driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"), chrome_options=options)
-        # #driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"))
-        # time.sleep(1)
-        # login(driver)
-        # getFile(driver)
-        # driver.quit()
-
-
-
+        temp = []
+        Users = firestore_db.collection(u'Users').stream()
+        for user in Users:
+            temp.append(user.to_dict())      
+        with open("Users.pickle", "wb") as f:
+             pickle.dump(temp,f)
   
+        if returnNotMatches(temp, Record) == [[],[]]:
+            print("no difference")
+            # print(returnNotMatches(temp, Record))
+        
+        
+        elif len(Record) > len(temp):
+            # print(returnNotMatches(temp, Record))
+            Record = temp
+            print("deleted")
+            # print(returnNotMatches(temp, Record))
+
+        else:
+            t = list(filter(None, returnNotMatches(temp, Record))) 
+            print(t)
+            newUsers = [item for sublist in t for item in sublist]
+            print(newUsers)
+            Record = temp
+            print("setup first time")
+            
+            for newUser in newUsers:
+                driver = browser()   
+                login(driver, newUser['Username'],newUser['Password'])
+                firstRun(driver,newUser['Username'])
+        time.sleep(60)
+
 
 if __name__ == "__main__":
 
-
-    # driver = browser()
-    # p = Process(target=subprocess, )
-    # p.start()
+    p = Process(target=subprocess, )
+    p.start()
 
     # login(driver)
     # getFile(driver)
@@ -180,5 +257,5 @@ if __name__ == "__main__":
     for i in temp:
         driver= browser()
         login(driver, i['Username'], i['Password'])
-        driver.quit()
-    
+        getFile(driver, i['Username'])
+

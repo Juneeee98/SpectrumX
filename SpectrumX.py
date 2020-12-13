@@ -79,6 +79,7 @@ def login(driver, Username, Pass):
 # --------------------------------------------------------------------------------------------
 # Obtaining files from SPeCTRUM
 # --------------------------------------------------------------------------------------------
+
 def getFile(driver, Username):
     toBePushData = []
     # Get the number of courses taken by the user
@@ -184,7 +185,8 @@ def firstRun(driver, Username):
       driver.back()
     driver.quit()
 
-def browser():
+#create webdriver
+def browser():  
     options = webdriver.ChromeOptions()
     options.add_argument('--ignore-certificate-errors')
     options.add_argument("--test-type")
@@ -194,12 +196,14 @@ def browser():
     #driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"))
     return driver
 
+#compare 2 list and return the differences
 def returnNotMatches(a, b):
     return [[x for x in a if x not in b], [x for x in b if x not in a]]
 
+#subprocess to check for new users to create new dataframe on database
 def subprocess():
     try:
-        pickle_in = open("Users.pickle", "rb")
+        pickle_in = open("Users.pickle", "rb") #open local pickle file that contains a record of previous user data
         Record = pickle.load(pickle_in)
         print(Record)
 
@@ -209,24 +213,24 @@ def subprocess():
 
     while True: 
         temp = []
-        Users = firestore_db.collection(u'Users').stream()
+        Users = firestore_db.collection(u'Users').stream() #get user data from database
         for user in Users:
             temp.append(user.to_dict())      
         with open("Users.pickle", "wb") as f:
              pickle.dump(temp,f)
   
-        if returnNotMatches(temp, Record) == [[],[]]:
+        if returnNotMatches(temp, Record) == [[],[]]: #if no new user data
             print("no difference")
             # print(returnNotMatches(temp, Record))
         
         
-        elif len(Record) > len(temp):
+        elif len(Record) > len(temp):                 #if some user data is deleted
             # print(returnNotMatches(temp, Record))
             Record = temp
             print("deleted")
             # print(returnNotMatches(temp, Record))
 
-        else:
+        else:                                         #if new user is added
             t = list(filter(None, returnNotMatches(temp, Record))) 
             print(t)
             newUsers = [item for sublist in t for item in sublist]
@@ -244,7 +248,7 @@ def subprocess():
 if __name__ == "__main__":
 
     p = Process(target=subprocess, )
-    p.start()
+    p.start()                            #start subprocess
 
     # login(driver)
     # getFile(driver)

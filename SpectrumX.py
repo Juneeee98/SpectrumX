@@ -15,11 +15,9 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 
-
-
-
 import schedule
 import time
+import re
 
 # import from other py file
 #import functions as funct
@@ -73,7 +71,6 @@ def login(driver):
             n = False
     print("exit while loop")
 
-submissionstatus = False
 
 def getFile(driver):
   
@@ -82,42 +79,46 @@ def getFile(driver):
       driver.find_elements_by_class_name("coursename")[x].click()         #clicking each course link
 
       for element in driver.find_elements_by_xpath('//div[1]/nav/ol/li[3]/a'):  #getting the title of courses clicked and create them in database
-            z = element.get_attribute("title")
-            courseCode = z.split(' ',1)
-            data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
-            firestore_db.collection(u'Course').document(courseCode[0]).update(data)
+         z = element.get_attribute("title")
+         courseCode = z.split(' ',1)
+         data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
+         #firestore_db.collection(u'Course').document(courseCode[0]).set(data)
 
       for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):   #getting the subtopic for each courses ie. Week 1 : MATLAB 01 Intro
          
         
-         if 'resource' in element.get_attribute("href"):                        #check if the clickable link is directed to a file type 
-        
+         if 'resource' in element.get_attribute("href"):   
             tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "resource" }
-            toBePushData.append(tempdata)
+            toBePushData.append(tempdata)                     #check if the clickable link is directed to a file type 
+            
     
 
          elif 'assign' in element.get_attribute("href"):                        #check if the clickable link is directed to a assignment submission type
             
-            tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" }
-            toBePushData.append(tempdata)
-            ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform()
-            driver.switch_to.window(driver.window_handles[-1])
-            if "submissionstatussubmitted cell c1 lastcol" in driver.page_source:
-              print("submitted")
-            else:
-                print("not bitch")
-            driver.close()
+            tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" } #create teamp variable to hold name and type of subtopic
+            ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform() #open a new tab 
+            driver.switch_to.window(driver.window_handles[-1])                                        #change focus 
+
+            td= []                                                                              
+            x=0
+            for element1 in driver.find_elements_by_xpath('//td[1]'):                                   #find left column of submission page
+                if("Submission status" in element1.text or "Due date" in element1.text ):
+
+                    dic = {element1.text : driver.find_elements_by_xpath('//td[2]')[x].text}            #find right column and add to dictionary to be pushed to database
+                    td.append(dic)                                                                      
+                    tempdata.update(dic)
+                
+
+                x=x+1
+            toBePushData.append(tempdata)                                                           #update the toBePushed data + submission info
+            driver.close()                                                                          #close current tab and switch back focus to main page
             driver.switch_to.window(driver.window_handles[0])
             
-    
-           
-           
-      firestore_db.collection(u'Course').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
+       
+      #firestore_db.collection(u'Course').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
       driver.back()
-
 
 
 if __name__ == "__main__":
     login(driver)
     getFile(driver)
-

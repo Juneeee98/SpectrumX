@@ -104,11 +104,11 @@ def logout(driver):
         driver.quit()
         print('Logged out successfully')
 
+
 # --------------------------------------------------------------------------------------------
 # Obtaining files from SPeCTRUM
 # --------------------------------------------------------------------------------------------
 def getFile(driver):
-    
     # Get the number of courses taken by the user
     for x in range(len(driver.find_elements_by_class_name("coursename"))): 
 
@@ -125,17 +125,18 @@ def getFile(driver):
         # Getting the subtopic for each courses (e.g. Week 1 : MATLAB 01 Intro)
         for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):   
             
+            # Check if the clickable link is directed to type: Files or resources
             if 'resource' in element.get_attribute("href"):   
                 tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "resource" }
                 toBePushData.append(tempdata)                                                                                 # Check if the clickable link is directed to a file type 
             
             # Check if the clickable link is directed to submission type: Assignment
             elif 'assign' in element.get_attribute("href"):                        
-                tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" }  # Create teamp variable to hold name and type of subtopic
+                tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" }  # Create temporary variable to hold name and type of subtopic
                 ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform()                     # Open a new tab 
                 driver.switch_to.window(driver.window_handles[-1])                                                            # Change focus 
-                td= []                                                                              
-                x=0
+                td = []                                                                              
+                x = 0
 
                 # Find the left column of submission page
                 for element1 in driver.find_elements_by_xpath('//td[1]'):                                   
@@ -145,7 +146,6 @@ def getFile(driver):
                         td.append(dic)                                                                      
                         tempdata.update(dic)
                 
-
                     x=x+1
                 toBePushData.append(tempdata)                                                                                 # Update the toBePushed data + submission info
                 driver.close()                                                                                                # Close current tab and switch back focus to main page
@@ -159,7 +159,7 @@ def getFile(driver):
 if __name__ == "__main__":
     login(driver)
     
-    # If log in is successful, run the following functions
+    # If login is successful, run the following functions
     if login_status == True:
         getFile(driver)
         logout(driver)

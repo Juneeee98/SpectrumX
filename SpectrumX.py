@@ -73,6 +73,7 @@ def login(driver):
             n = False
     print("exit while loop")
 
+submissionstatus = False
 
 def getFile(driver):
   
@@ -81,10 +82,10 @@ def getFile(driver):
       driver.find_elements_by_class_name("coursename")[x].click()         #clicking each course link
 
       for element in driver.find_elements_by_xpath('//div[1]/nav/ol/li[3]/a'):  #getting the title of courses clicked and create them in database
-         z = element.get_attribute("title")
-         courseCode = z.split(' ',1)
-         data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
-         firestore_db.collection(u'Course').document(courseCode[0]).set(data)
+            z = element.get_attribute("title")
+            courseCode = z.split(' ',1)
+            data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
+            firestore_db.collection(u'Course').document(courseCode[0]).update(data)
 
       for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):   #getting the subtopic for each courses ie. Week 1 : MATLAB 01 Intro
          
@@ -99,6 +100,12 @@ def getFile(driver):
             
             tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" }
             toBePushData.append(tempdata)
+            ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform()
+            driver.switch_to.window(driver.window_handles[-1])
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            
+    
            
            
       firestore_db.collection(u'Course').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database

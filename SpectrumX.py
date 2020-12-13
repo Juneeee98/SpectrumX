@@ -127,6 +127,7 @@ def getFile(driver, Username):
             
       # Pushing all subtopic updates to database
       firestore_db.collection(u'Users').document(Username).collection('Subjects').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
+      toBePushData = []
  
       driver.back()
     driver.quit()
@@ -179,7 +180,7 @@ def firstRun(driver, Username):
             
       # Pushing all subtopic updates to database
       firestore_db.collection(u'Users').document(Username).collection('Subjects').document(courseCode[0]).update({"subTopic": toBePushData})   #pushing all subtopic updates to database
- 
+      toBePushData = []
       driver.back()
     driver.quit()
 
@@ -237,7 +238,7 @@ def subprocess():
                 driver = browser()   
                 login(driver, newUser['Username'],newUser['Password'])
                 firstRun(driver,newUser['Username'])
-        time.sleep(60)
+        time.sleep(5)
 
 
 if __name__ == "__main__":
@@ -252,7 +253,7 @@ if __name__ == "__main__":
     for user in Users:
         temp.append(user.to_dict())
 
-    print(temp) 
+    # print(temp) 
     
     for i in temp:
         driver= browser()

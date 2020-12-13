@@ -102,6 +102,10 @@ def getFile(driver):
             toBePushData.append(tempdata)
             ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform()
             driver.switch_to.window(driver.window_handles[-1])
+            if "submissionstatussubmitted cell c1 lastcol" in driver.page_source:
+              print("submitted")
+            else:
+                print("not bitch")
             driver.close()
             driver.switch_to.window(driver.window_handles[0])
             
@@ -112,6 +116,8 @@ def getFile(driver):
       driver.back()
 
 
+
 if __name__ == "__main__":
     login(driver)
     getFile(driver)
+

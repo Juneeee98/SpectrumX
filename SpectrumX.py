@@ -82,6 +82,7 @@ def login(driver, Username, Pass):
 
 def getFile(driver, Username):
     toBePushData = []
+    oldData = fetchOldData(Username)
     # Get the number of courses taken by the user
     for x in range(len(driver.find_elements_by_class_name("coursename"))): #get the length of Courses Taken by users
     # Click into each course link
@@ -99,6 +100,10 @@ def getFile(driver, Username):
         # Check if the clickable link is directed to type: Files or resources
          if 'resource' in element.get_attribute("href"):   
             tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "resource" }
+            if tempdata['link'] in oldData:
+                print("resource exists")
+            else:
+                print("Ghost lanjiao")
             toBePushData.append(tempdata)                     #check if the clickable link is directed to a file type 
             
     
@@ -106,6 +111,10 @@ def getFile(driver, Username):
          elif 'assign' in element.get_attribute("href"):                        #check if the clickable link is directed to a assignment submission type
             
             tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" } #create teamp variable to hold name and type of subtopic
+            if tempdata['link'] in oldData:
+                print("assignment exists")
+            else:
+                print("Oops ganilaoshi")
             ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform() #open a new tab 
             driver.switch_to.window(driver.window_handles[-1])                                        #change focus 
 
@@ -245,19 +254,51 @@ def subprocess():
         time.sleep(5)
 
 
+def fetchOldData(Username):
+    temp = []
+    Files = firestore_db.collection(u'Users').document(Username).collection('Subjects').stream()
+    for f in Files:
+        temp.append(f.to_dict())
+    
+    t = temp
+    k = []
+    for i in t:
+        k.append(i)
+    
+    q = []
+    for i in k:
+        q.append(i['subTopic'])
+    
+    flat_list = []
+    for sublist in q:
+        for item in sublist:
+            flat_list.append(item)
+    
+    f = []
+
+    for i in range(len(flat_list)):
+        f.append(flat_list[i]['link'])
+    
+    return f
+
+
 if __name__ == "__main__":
 
-    p = Process(target=subprocess, )
-    p.start()                            #start subprocess
 
-    # login(driver)
-    # getFile(driver)
+
+    
+   
+
+
+    # p = Process(target=subprocess, )
+    # p.start()                            #start subprocess
+
     temp = []
     Users = firestore_db.collection(u'Users').stream()
     for user in Users:
         temp.append(user.to_dict())
 
-    # print(temp) 
+    # # print(temp) 
     
     for i in temp:
         driver= browser()

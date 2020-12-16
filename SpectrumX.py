@@ -82,6 +82,7 @@ def login(driver, Username, Pass):
 
 def getFile(driver, Username):
     toBePushData = []
+    notifications = []
     oldData = fetchOldData(Username)
     # Get the number of courses taken by the user
     for x in range(len(driver.find_elements_by_class_name("coursename"))): #get the length of Courses Taken by users
@@ -100,21 +101,20 @@ def getFile(driver, Username):
         # Check if the clickable link is directed to type: Files or resources
          if 'resource' in element.get_attribute("href"):   
             tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "resource" }
-            if tempdata['link'] in oldData:
-                print("resource exists")
-            else:
-                print("Ghost lanjiao")
-            toBePushData.append(tempdata)                     #check if the clickable link is directed to a file type 
-            
+            if tempdata['link'] not in oldData:
+               notifications.append(z + "\n" + element.get_attribute("text") + " have been uploaded. \n"  + "Link: " + element.get_attribute("href"))
+               firestore_db.collection(u'Users').document(Username).collection('Notifications').document('notification').update({"noti": notifications})
+            toBePushData.append(tempdata)
+               
+
     
         # Check if the clickable link is directed to submission type: Assignment
          elif 'assign' in element.get_attribute("href"):                        #check if the clickable link is directed to a assignment submission type
             
             tempdata = {'name' : element.get_attribute("text"),'link': element.get_attribute("href"), 'type': "assign" } #create teamp variable to hold name and type of subtopic
-            if tempdata['link'] in oldData:
-                print("assignment exists")
-            else:
-                print("Oops ganilaoshi")
+            if tempdata['link'] not in oldData:
+                notifications.append(z + "\n" + "Assignment submission is open (" + element.get_attribute("text") + ") \n"  + "Link: " + element.get_attribute("href"))
+                firestore_db.collection(u'Users').document(Username).collection('Notifications').document('notification').update({"noti": notifications})
             ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform() #open a new tab 
             driver.switch_to.window(driver.window_handles[-1])                                        #change focus 
 
@@ -144,6 +144,7 @@ def getFile(driver, Username):
 
 def firstRun(driver, Username):
     toBePushData = []
+    firestore_db.collection(u'Users').document(Username).collection('Notifications').document('notification').set({"noti": toBePushData})
     # Get the number of courses taken by the user
     for x in range(len(driver.find_elements_by_class_name("coursename"))): #get the length of Courses Taken by users
     # Click into each course link
@@ -154,6 +155,7 @@ def firstRun(driver, Username):
          courseCode = z.split(' ',1)
          data = {'CourseName': courseCode[1], 'CourseCode': courseCode[0]}
          firestore_db.collection(u'Users').document(Username).collection('Subjects').document(courseCode[0]).set(data)
+       
 
       # Getting the subtopic for each courses (e.g. Week 1 : MATLAB 01 Intro)
       for element in driver.find_elements_by_xpath('//div/div/div[2]/div/a'):   #getting the subtopic for each courses ie. Week 1 : MATLAB 01 Intro
@@ -201,7 +203,7 @@ def browser():
     options.add_argument("--test-type")
     options = Options()
     options.headless = False
-    driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"), chrome_options=options)
+    driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"), options=options)
     #driver = webdriver.Chrome(os.getenv("DRIVER_LOCATION"))
     return driver
 
@@ -284,12 +286,6 @@ def fetchOldData(Username):
 
 if __name__ == "__main__":
 
-
-
-    
-   
-
-
     # p = Process(target=subprocess, )
     # p.start()                            #start subprocess
 
@@ -298,7 +294,7 @@ if __name__ == "__main__":
     for user in Users:
         temp.append(user.to_dict())
 
-    # # print(temp) 
+    print(temp) 
     
     for i in temp:
         driver= browser()
